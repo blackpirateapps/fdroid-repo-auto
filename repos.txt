@@ -6,3 +6,4 @@
 # my-org/my-app
 # someone-else/another-app
 blackpirateapps/relapse.git
+blackpiratelive/book-app-themed
