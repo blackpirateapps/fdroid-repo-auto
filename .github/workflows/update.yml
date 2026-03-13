@@ -30,9 +30,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            fdroidserver \
             jq \
-            openjdk-17-jre-headless
+            openjdk-17-jre-headless \
+            python3-pip
+          python3 -m pip install --user --upgrade pip
+          # Use a newer fdroidserver/androguard than Ubuntu apt provides to reduce APK parsing issues.
+          python3 -m pip install --user --upgrade fdroidserver androguard
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Configure git
         run: |
