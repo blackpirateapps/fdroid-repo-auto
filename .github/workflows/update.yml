@@ -68,43 +68,43 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-import json, os, pathlib
-
-def req(name: str) -> str:
-    v = os.environ.get(name, "").strip()
-    if not v:
-        raise SystemExit(f"Missing required env var: {name}")
-    return v
-
-def y(value: str) -> str:
-    # JSON string literals are also valid double-quoted YAML scalars.
-    return json.dumps(value)
-
-cfg_path = pathlib.Path("site/config.yml")
-
-repo_url = req("FDROID_REPO_URL")
-repo_name = req("FDROID_REPO_NAME")
-repo_description = req("FDROID_REPO_DESCRIPTION")
-alias = req("FDROID_KEY_ALIAS")
-keystore_pass = req("FDROID_KEYSTORE_PASS")
-key_pass = os.environ.get("FDROID_KEY_PASS", "").strip() or keystore_pass
-
-cfg_text = "\n".join(
-    [
-        f"repo_url: {y(repo_url)}",
-        f"repo_name: {y(repo_name)}",
-        f"repo_description: {y(repo_description)}",
-        "",
-        "keystore: keystore.jks",
-        f"repo_keyalias: {y(alias)}",
-        f"keystorepass: {y(keystore_pass)}",
-        f"keypass: {y(key_pass)}",
-        "",
-    ]
-)
-
-cfg_path.write_text(cfg_text, encoding="utf-8")
-PY
+          import json, os, pathlib
+          
+          def req(name: str) -> str:
+              v = os.environ.get(name, "").strip()
+              if not v:
+                  raise SystemExit(f"Missing required env var: {name}")
+              return v
+          
+          def y(value: str) -> str:
+              # JSON string literals are also valid double-quoted YAML scalars.
+              return json.dumps(value)
+          
+          cfg_path = pathlib.Path("site/config.yml")
+          
+          repo_url = req("FDROID_REPO_URL")
+          repo_name = req("FDROID_REPO_NAME")
+          repo_description = req("FDROID_REPO_DESCRIPTION")
+          alias = req("FDROID_KEY_ALIAS")
+          keystore_pass = req("FDROID_KEYSTORE_PASS")
+          key_pass = os.environ.get("FDROID_KEY_PASS", "").strip() or keystore_pass
+          
+          cfg_text = "\n".join(
+              [
+                  f"repo_url: {y(repo_url)}",
+                  f"repo_name: {y(repo_name)}",
+                  f"repo_description: {y(repo_description)}",
+                  "",
+                  "keystore: keystore.jks",
+                  f"repo_keyalias: {y(alias)}",
+                  f"keystorepass: {y(keystore_pass)}",
+                  f"keypass: {y(key_pass)}",
+                  "",
+              ]
+          )
+          
+          cfg_path.write_text(cfg_text, encoding="utf-8")
+          PY
 
       - name: Download latest APK assets from tracked repos (includes pre-releases)
         run: |
