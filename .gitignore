@@ -1,0 +1,12 @@
+# F-Droid working files (generated in CI)
+config.yml
+*.keystore
+*.jks
+keystore.jks
+
+# F-Droid outputs (published from gh-pages; keep out of main)
+repo/
+metadata/
+tmp/
+logs/
+

@@ -1,0 +1,8 @@
+# List GitHub repositories to track for APK release assets.
+# One repo per line in the form: OWNER/REPO
+# Lines starting with # are ignored.
+#
+# Example:
+# my-org/my-app
+# someone-else/another-app
+

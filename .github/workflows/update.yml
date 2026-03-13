@@ -1,0 +1,133 @@
+name: Update F-Droid repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fdroid-repo-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      # Prefer a PAT if you need to read private repos' releases.
+      # Otherwise GITHUB_TOKEN is fine for public repos.
+      GH_TOKEN: ${{ secrets.FDROID_GH_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fdroidserver \
+            jq \
+            openjdk-17-jre-headless
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare gh-pages worktree
+        run: |
+          set -euo pipefail
+          git fetch origin gh-pages || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git worktree add --force site origin/gh-pages
+          else
+            git worktree add -B gh-pages site
+            (cd site && git rm -r --ignore-unmatch . || true)
+          fi
+          mkdir -p site/repo site/metadata site/tmp site/logs
+
+      - name: Restore signing keystore (from secrets)
+        env:
+          FDROID_KEYSTORE_BASE64: ${{ secrets.FDROID_KEYSTORE_BASE64 }}
+        run: |
+          bash scripts/restore_keystore.sh site/keystore.jks
+
+      - name: Write F-Droid config.yml (runtime only)
+        env:
+          FDROID_KEYSTORE_PASS: ${{ secrets.FDROID_KEYSTORE_PASS }}
+          FDROID_KEY_ALIAS: ${{ secrets.FDROID_KEY_ALIAS }}
+          FDROID_KEY_PASS: ${{ secrets.FDROID_KEY_PASS }}
+          FDROID_REPO_URL: ${{ secrets.FDROID_REPO_URL }}
+          FDROID_REPO_NAME: ${{ secrets.FDROID_REPO_NAME }}
+          FDROID_REPO_DESCRIPTION: ${{ secrets.FDROID_REPO_DESCRIPTION }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+import json, os, pathlib
+
+def req(name: str) -> str:
+    v = os.environ.get(name, "").strip()
+    if not v:
+        raise SystemExit(f"Missing required env var: {name}")
+    return v
+
+def y(value: str) -> str:
+    # JSON string literals are also valid double-quoted YAML scalars.
+    return json.dumps(value)
+
+cfg_path = pathlib.Path("site/config.yml")
+
+repo_url = req("FDROID_REPO_URL")
+repo_name = req("FDROID_REPO_NAME")
+repo_description = req("FDROID_REPO_DESCRIPTION")
+alias = req("FDROID_KEY_ALIAS")
+keystore_pass = req("FDROID_KEYSTORE_PASS")
+key_pass = os.environ.get("FDROID_KEY_PASS", "").strip() or keystore_pass
+
+cfg_text = "\n".join(
+    [
+        f"repo_url: {y(repo_url)}",
+        f"repo_name: {y(repo_name)}",
+        f"repo_description: {y(repo_description)}",
+        "",
+        "keystore: keystore.jks",
+        f"repo_keyalias: {y(alias)}",
+        f"keystorepass: {y(keystore_pass)}",
+        f"keypass: {y(key_pass)}",
+        "",
+    ]
+)
+
+cfg_path.write_text(cfg_text, encoding="utf-8")
+PY
+
+      - name: Download latest APK assets from tracked repos (includes pre-releases)
+        run: |
+          bash scripts/fetch_apks.sh repos.txt site/repo
+
+      - name: Run fdroid update (generate metadata + index)
+        working-directory: site
+        run: |
+          set -euo pipefail
+          fdroid update --create-metadata
+
+      - name: Remove secrets from worktree
+        run: |
+          rm -f site/config.yml site/keystore.jks
+
+      - name: Commit and push updated repo
+        working-directory: site
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update F-Droid repo"
+          git push origin gh-pages
