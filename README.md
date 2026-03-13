@@ -101,6 +101,7 @@ Tip: After the first workflow run, open the generated files in `metadata/` and e
 
 - GitHub CLI prereleases: this setup selects the newest non-draft release via the GitHub API (which includes pre-releases), then downloads that tag’s `*.apk` assets with `gh release download`.
 - “Private” repos + Pages: GitHub Pages is typically public. If you require private distribution, use an internal web host or a Pages-like solution that supports auth.
+- If `fdroid update` crashes with an `androguard` `ResParserError` while scanning an APK (e.g. `resources.arsc` parsing), the workflow now removes those offending APKs before indexing and logs their filenames in the job output.
 
 ## 7) Run it
 

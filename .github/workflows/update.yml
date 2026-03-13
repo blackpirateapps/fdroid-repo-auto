@@ -110,6 +110,10 @@ jobs:
         run: |
           bash scripts/fetch_apks.sh repos.txt site/repo
 
+      - name: Filter APKs that break fdroid/androguard scanning
+        run: |
+          python3 scripts/filter_bad_apks.py site/repo
+
       - name: Run fdroid update (generate metadata + index)
         working-directory: site
         run: |
@@ -124,7 +128,7 @@ jobs:
         working-directory: site
         run: |
           set -euo pipefail
-          git add -A
+          git add -A repo metadata
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
