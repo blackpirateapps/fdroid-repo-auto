@@ -42,11 +42,15 @@ jobs:
       - name: Prepare gh-pages worktree
         run: |
           set -euo pipefail
-          git fetch origin gh-pages || true
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git worktree add --force site origin/gh-pages
+          # Important: don't `worktree add ... origin/gh-pages` because that checks out a detached HEAD.
+          # We want a local `gh-pages` branch so `git push origin gh-pages` works.
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:refs/heads/gh-pages
+            git worktree add --force site gh-pages
           else
-            git worktree add -B gh-pages site
+            # Initialize an orphan gh-pages branch for first publish.
+            git worktree add --force --detach site
+            (cd site && git checkout --orphan gh-pages)
             (cd site && git rm -r --ignore-unmatch . || true)
           fi
           mkdir -p site/repo site/metadata site/tmp site/logs
@@ -134,4 +138,4 @@ jobs:
             exit 0
           fi
           git commit -m "Update F-Droid repo"
-          git push origin gh-pages
+          git push origin HEAD:gh-pages
